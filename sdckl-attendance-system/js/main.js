@@ -156,14 +156,43 @@ const simulateAttendanceRecords = () => {
 
 window.simulateAttendanceRecords = simulateAttendanceRecords;
 
-// Function to clear attendance records (for testing or reset)
 const clearAttendanceRecords = () => {
     localStorage.removeItem('attendanceRecords');
 };
 
-// Export new functions
-window.getAttendanceRecords = getAttendanceRecords;
+// Function to simulate attendance records for existing students for testing eligibility
+const simulateAttendanceForStudents = () => {
+    const students = JSON.parse(localStorage.getItem('students')) || [];
+    if (students.length === 0) {
+        console.warn('No students found in localStorage.');
+        return;
+    }
+
+    // Create attendance records for last 5 days for each student as Present
+    const attendanceRecords = [];
+    const today = new Date();
+    for (let i = 0; i < 5; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const isoDate = date.toISOString().slice(0, 10);
+
+        students.forEach(student => {
+            attendanceRecords.push({
+                studentId: student.studentId,
+                studentName: student.studentName,
+                timestamp: isoDate + 'T08:00:00.000Z',
+                status: 'Present'
+            });
+        });
+    }
+
+    localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+    console.log('Simulated attendance records for students added.');
+};
+
+window.simulateAttendanceForStudents = simulateAttendanceForStudents;
 window.clearAttendanceRecords = clearAttendanceRecords;
+window.getAttendanceRecords = getAttendanceRecords;
 
 // UI Utilities
 const ui = {
@@ -262,6 +291,35 @@ window.biometric = biometric;
 window.notifications = notifications;
 window.ui = ui;
 window.dateUtils = dateUtils;
+
+// Function to calculate attendance percentage for a student
+window.calculateAttendancePercentage = (studentId) => {
+    const attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+    if (attendanceRecords.length === 0) {
+        return 0;
+    }
+
+    // Get unique attendance dates (sessions)
+    const uniqueDates = [...new Set(attendanceRecords.map(record => record.timestamp.slice(0, 10)))];
+    const totalSessions = uniqueDates.length;
+
+    if (totalSessions === 0) {
+        return 0;
+    }
+
+    // Count number of sessions student attended (Present or Late)
+    const attendedDates = new Set(
+        attendanceRecords
+            .filter(record => record.studentId === studentId && (record.status === 'Present' || record.status === 'Late'))
+            .map(record => record.timestamp.slice(0, 10))
+    );
+
+    const attendedCount = attendedDates.size;
+
+    // Calculate percentage
+    const percentage = (attendedCount / totalSessions) * 100;
+    return percentage;
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication status
